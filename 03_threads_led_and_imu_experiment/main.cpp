@@ -105,12 +105,12 @@ MoveState detectMovement(MPU6050Data& data) {
     // Threshold values for motion detection
     const float ACCEL_STATIONARY_THRESHOLD = 1.0f;  // Acceleration threshold for stationary detection
     const float ACCEL_MOVING_THRESHOLD = 2.0f;      // Acceleration threshold for axis-specific movement
-    const float GYRO_ROTATING_THRESHOLD = 25.0f;    // Gyroscope threshold for axis-specific rotation
-    const float TILT_THRESHOLD = 0.2f;              // Threshold for tilt detection (20% of gravity)
+    const float GYRO_ROTATING_THRESHOLD = 50.0f;    // Gyroscope threshold for axis-specific rotation
+    const float TILT_THRESHOLD = 0.3f;              // Threshold for tilt detection (20% of gravity)
     const float HORIZONTAL_THRESHOLD = 0.1f;        // Threshold for horizontal detection
 
     // 1. First, check if device is stationary (close to 1g acceleration and minimal rotation)
-    if (fabs(accel_magnitude - g_acc) < ACCEL_STATIONARY_THRESHOLD && gyro_magnitude < 10.0f) {
+    if (fabs(accel_magnitude - g_acc) < ACCEL_STATIONARY_THRESHOLD && gyro_magnitude < 5.0f) {
         // Device is stationary, now check if it's horizontal or tilted
 
         // For horizontal stationary: acceleration should be mostly in Z direction
@@ -161,18 +161,16 @@ MoveState detectMovement(MPU6050Data& data) {
     float lin_acc_z = data.az - g_acc;  // Remove gravity from Z axis
 
     // Calculate linear acceleration magnitude without gravity
-    float lin_acc_mag = sqrt(lin_acc_x*lin_acc_x + lin_acc_y*lin_acc_y + lin_acc_z*lin_acc_z);
+    float lin_acc_mag = sqrt(lin_acc_x * lin_acc_x + lin_acc_y * lin_acc_y + lin_acc_z * lin_acc_z);
 
     // Check if there's significant linear acceleration
     if (lin_acc_mag > ACCEL_MOVING_THRESHOLD) {
         // Determine which axis has the most significant movement
         if (fabs(lin_acc_x) > fabs(lin_acc_y) * 1.2f && fabs(lin_acc_x) > fabs(lin_acc_z) * 1.2f) {
             return X_Axis_Moving;  // Movement along X axis - 黄灯
-        }
-        else if (fabs(lin_acc_y) > fabs(lin_acc_x) * 1.2f && fabs(lin_acc_y) > fabs(lin_acc_z) * 1.2f) {
+        } else if (fabs(lin_acc_y) > fabs(lin_acc_x) * 1.2f && fabs(lin_acc_y) > fabs(lin_acc_z) * 1.2f) {
             return Y_Axis_Moving;  // Movement along Y axis - 绿灯
-        }
-        else if (fabs(lin_acc_z) > fabs(lin_acc_x) * 1.2f && fabs(lin_acc_z) > fabs(lin_acc_y) * 1.2f) {
+        } else if (fabs(lin_acc_z) > fabs(lin_acc_x) * 1.2f && fabs(lin_acc_z) > fabs(lin_acc_y) * 1.2f) {
             return Z_Axis_Moving;  // Movement along Z axis - 青灯
         }
     }
