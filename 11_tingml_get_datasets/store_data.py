@@ -11,7 +11,6 @@ from datetime import datetime  # 用于获取当前日期和时间
 # 最大记录数
 MAX_NUM = 200
 
-
 class SerialControl:
     def __init__(self, port="/dev/ttyUSB0", direction="none"):
         # 查找所有符合 /dev/ttyUSB* 模式的串口设备
@@ -94,7 +93,7 @@ def main():
 
     # 解析命令行参数
     args = parser.parse_args()
-    _directions = ["Stationary", "Tilted", "Rotating", "Moving"]  # 定义方向选项
+    _directions = ["Stationary", "X_Axis_Moving", "Y_Axis_Moving", "Z_Axis_Moving", "X_Axis_Rotating", "Y_Axis_Rotating", "Z_Axis_Rotating", "Tilted_Stationary"]  # 定义方向选项
     if args.direction >= len(_directions):
         raise ValueError(
             f"args.direction should be less than num of directions: ({args.direction} >= {len(_directions)})"
