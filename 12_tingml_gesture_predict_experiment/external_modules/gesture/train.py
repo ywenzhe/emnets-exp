@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 # 数据集相对路径
 DATA_PATH = "../../../10_tingml_datasets/"
 # LABELS 的内容尽量与前面store_data.py保持一致
-LABELS = ["Stationary", "Tilted", "Rotating", "Moving"]
+LABELS = ["Stationary", "X_Axis_Moving", "Y_Axis_Moving", "Z_Axis_Moving", "X_Axis_Rotating", "Y_Axis_Rotating", "Z_Axis_Rotating", "Tilted_Stationary"]
 # 代表一个样本内容，如连续10次传感器读到的6轴数据作为一个样本
 SAMPLES_PER_GESTURE = 10
 def load_one_label_data(label):
