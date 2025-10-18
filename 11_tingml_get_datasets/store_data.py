@@ -7,9 +7,10 @@ import serial  # 用于串口通信
 import argparse
 import numpy as np  # 用于数值计算和数组处理
 from datetime import datetime  # 用于获取当前日期和时间
+import time
 
 # 最大记录数
-MAX_NUM = 200
+MAX_NUM = 500
 
 class SerialControl:
     def __init__(self, port="/dev/ttyUSB0", direction="none"):
@@ -105,4 +106,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()  # 程序入口，调用main函数
+    for i in range(30):
+        print("第 {0} 次搜集".format(i+1))
+        time.sleep(2)
+        main()  # 程序入口，调用main函数

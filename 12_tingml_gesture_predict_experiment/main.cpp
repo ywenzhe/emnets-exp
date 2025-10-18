@@ -16,17 +16,32 @@ using namespace std;
 #define THREAD_STACKSIZE        (THREAD_STACKSIZE_IDLE)
 static char stack_for_motion_thread[THREAD_STACKSIZE];
 static char stack_for_led_thread[THREAD_STACKSIZE];
+
 static kernel_pid_t _led_pid;
 #define LED_GPIO_R GPIO26
 #define LED_GPIO_G GPIO25
 #define LED_GPIO_B GPIO27
+
 #define g_acc (9.8)
-#define SAMPLES_PER_GESTURE (10)
+#define SAMPLES_PER_GESTURE (20)
+
 struct MPU6050Data
 {
     float ax, ay, az; // acceler_x_axis, acceler_y_axis, acceler_z_axis
     float gx, gy, gz; // gyroscope_x_axis, gyroscope_y_axis, gyroscope_z_axis
 };
+
+enum MoveState {
+    Stationary,        // 水平静止（不亮灯）
+    X_Axis_Moving,     // X轴方向平移（黄灯）
+    Y_Axis_Moving,     // Y轴方向平移（绿灯）
+    Z_Axis_Moving,     // Z轴方向平移（青灯）
+    X_Axis_Rotating,   // 绕X轴旋转（蓝灯）
+    Y_Axis_Rotating,   // 绕Y轴旋转（洋红灯）
+    Z_Axis_Rotating,   // 绕Z轴旋转（白灯）
+    Tilted_Stationary  // 倾斜静止（红灯）
+};
+
 void delay_ms(uint32_t sleep_ms)
 {
     ztimer_sleep(ZTIMER_USEC, sleep_ms * US_PER_MS);
@@ -40,14 +55,46 @@ void delay_ms(uint32_t sleep_ms)
  */
 void *_led_thread(void *arg)
 {
-    (void) arg;
+    (void)arg;
     LEDController led(LED_GPIO_R, LED_GPIO_G, LED_GPIO_B);
-    led.change_led_color(0);
-    while(1){
-        // Input your codes
+    led.change_led_color(COLOR_NONE);
+
+    msg_t msg;
+
+    while (1) {
         // Wait for a message to control the LED
-        // Display different light colors based on the motion state of the device.
-        delay_ms(10);    
+        msg_receive(&msg);
+
+        // Display different light colors based on the motion state of the device
+        switch (msg.type) {
+        case Stationary:
+            led.change_led_color(COLOR_NONE);     // Off for horizontal stationary
+            break;
+        case X_Axis_Moving:
+            led.change_led_color(COLOR_YELLO);    // Yellow for X-axis translation
+            break;
+        case Y_Axis_Moving:
+            led.change_led_color(COLOR_GREEN);    // Green for Y-axis translation
+            break;
+        case Z_Axis_Moving:
+            led.change_led_color(COLOR_CYAN);     // Cyan for Z-axis translation
+            break;
+        case X_Axis_Rotating:
+            led.change_led_color(COLOR_BLUE);     // Blue for X-axis rotation
+            break;
+        case Y_Axis_Rotating:
+            led.change_led_color(COLOR_MAGENTA);  // Magenta for Y-axis rotation
+            break;
+        case Z_Axis_Rotating:
+            led.change_led_color(COLOR_WHITE);    // White for Z-axis rotation
+            break;
+        case Tilted_Stationary:
+            led.change_led_color(COLOR_RED);      // Red for tilted stationary
+            break;
+        default:
+            led.change_led_color(COLOR_NONE);     // Off for unknown state
+            break;
+        }
     }
     return NULL;
 }
@@ -80,6 +127,7 @@ void *_motion_thread(void *arg)
     uint8_t device_id = mpu.getDeviceID();
     printf("[IMU_THREAD] DEVICE_ID:0x%x\n", device_id);
     mpu.initialize();
+
     // Configure gyroscope and accelerometer full scale ranges
     uint8_t gyro_fs = mpu.getFullScaleGyroRange();
     uint8_t accel_fs_g = mpu.getFullScaleAccelRange();
@@ -113,29 +161,39 @@ void *_motion_thread(void *arg)
     accel_fs_convert = 32768.0 / accel_fs_real;
     float imu_data[SAMPLES_PER_GESTURE * 6] = {0};
     int data_len = SAMPLES_PER_GESTURE * 6;
-    delay_ms(200);
+    delay_ms(100);
     // Main loop
-    int predict_interval_ms = 200;
+    int predict_interval_ms = 100;
     int ret = 0;
-#define class_num (4)
+#define class_num (8)
     float threshold = 0.7;
-    string motions[class_num] = {"Stationary", "Tilted", "Rotating", "Moving"};
+    MoveState motions[class_num] = {Stationary, X_Axis_Moving, Y_Axis_Moving, Z_Axis_Moving, X_Axis_Rotating, Y_Axis_Rotating, Z_Axis_Rotating, Tilted_Stationary};
+    
+    MoveState currentState, previousState = Stationary;
+    msg_t msg;
+
     while (1) {
-        delay_ms(predict_interval_ms);    
+        delay_ms(predict_interval_ms); 
         // Read sensor data
         get_imu_data(mpu, imu_data);
         ret = predict(imu_data, data_len, threshold, class_num);
         // tell the led thread to do some operations
         // input your code
+
+        currentState = motions[ret];
+
+        if(currentState != previousState) {
+            msg.type = (uint32_t)currentState;
+            msg_send(&msg, _led_pid);
+        }
+
+        previousState = currentState;
+
         // Print result
-        printf("Predict: %d, %s\n", ret, motions[ret].c_str());
+        //printf("Predict: %d, %s\n", ret, motions[ret].c_str());
     }
     return NULL;
 }
-
-
-
-
 
 int main(int argc, char* argv[])
 {
